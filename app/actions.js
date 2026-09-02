@@ -1,7 +1,7 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { createClient } from '@supabase/supabase-js';
+import { headers } from 'next/headers';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL, 
@@ -16,7 +16,7 @@ export async function castVote(teamId) {
     const forwardedFor = headersList.get('x-forwarded-for');
     const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : '127.0.0.1';
 
-    // 1. මෙම IP එකෙන් දැනටමත් voted කර ඇද්දැයි පරීක්ෂා කිරීම
+    // 1. ip_address එක මඟින් මීට පෙර ඡන්දය ප්‍රකාශ කර ඇද්දැයි පරීක්ෂා කිරීම
     const { data: existingVote, error: checkError } = await supabase
       .from('votes')
       .select('*')
@@ -32,7 +32,7 @@ export async function castVote(teamId) {
       return { success: false, message: 'ඔබ මෙම උපාංගයෙන් දැනටමත් ඡන්දය ප්‍රකාශ කර ඇත!' };
     }
 
-    // 2. අලුත් ඡන්දය votes table එකට ඇතුළත් කිරීම
+    // 2. ඡන්දය votes table එකට ඇතුළත් කිරීම
     const { error: insertError } = await supabase
       .from('votes')
       .insert([{ ip_address: ip, team_id: teamId }]);
@@ -42,7 +42,7 @@ export async function castVote(teamId) {
       return { success: false, message: 'ඡන්දය සටහන් කරගැනීමට නොහැකි විය.' };
     }
 
-    return { success: true, message: 'ඔේබේ ඡන්දය සාර්ථකව ලබා දෙන ලදී!' };
+    return { success: true, message: 'ඔබේ ඡන්දය සාර්ථකව ලබා දෙන ලදී!' };
 
   } catch (err) {
     console.error('Server error:', err);
