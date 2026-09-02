@@ -1,6 +1,6 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import PageLoader from "./PageLoader"; // PageLoader එක ඉම්පෝර්ට් කිරීම
+import PageLoader from "./PageLoader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -24,7 +24,7 @@ export default function RootLayout({ children }) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-[#05060a] text-slate-100 selection:bg-amber-500 selection:text-slate-950" suppressHydrationWarning>
-        {/* මෙන්න මෙතැනට දැමූ විට හැම ලින්ක් ක්ලික් එකකදීම ප්‍රිමියම් ලෝඩර් එක ක්‍රියාත්මක වේ */}
+        {/* ලින්ක් එකක් ක්ලික් කරන සෑම අවස්ථාවකම ක්‍රියාත්මක වන Global Page Loader */}
         <PageLoader />
         
         {children}
