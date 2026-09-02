@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import Link from 'next/link';
 
-// Advanced Passwords සමඟ සකස් කළ Coordinator Credentials ලැයිස්තුව
 const ADMIN_CREDENTIALS = [
   { id: 'main_boy', pass: 'Sah@sra#2026_SecureKey!99', role: 'Main Coordinator (Boy)' },
   { id: 'main_girl', pass: 'Admin_Portal$2026#X9v', role: 'Main Coordinator (Girl)' },
@@ -26,7 +25,6 @@ export default function AdminPage() {
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Voting settings states
   const [isOpen, setIsOpen] = useState(true);
   const [deadlineInput, setDeadlineInput] = useState('');
   const [updatingSettings, setUpdatingSettings] = useState(false);
@@ -49,12 +47,10 @@ export default function AdminPage() {
     }
   };
 
-  // ඩේටාබෙස් එකෙන් Voting settings සහ Teams ලබා ගැනීම
   const fetchSettingsAndTeams = async () => {
     try {
       setLoading(true);
 
-      // 1. Fetch voting settings
       const { data: settingsData } = await supabase
         .from('voting_settings')
         .select('*')
@@ -69,7 +65,6 @@ export default function AdminPage() {
         }
       }
 
-      // 2. Fetch teams
       const { data: teamsData, error } = await supabase
         .from('teams')
         .select('*')
@@ -90,7 +85,6 @@ export default function AdminPage() {
     }
   }, [isLoggedIn]);
 
-  // Voting settings වෙනස් කිරීම (Open/Close සහ Deadline Update කිරීම)
   const handleUpdateSettings = async (newStatus, newDeadline) => {
     try {
       setUpdatingSettings(true);
@@ -111,7 +105,14 @@ export default function AdminPage() {
     }
   };
 
-  // Countdown timer logic
+  // ඉක්මනින් මිනිත්තු හෝ පැය ගණනකින් ඩෙඩ්ලයින් එක සෙට් කරන ෆන්ක්ෂන් එක
+  const handleQuickDeadline = (minutesFromNow) => {
+    const futureDate = new Date(new Date().getTime() + minutesFromNow * 60000);
+    const formattedDate = futureDate.toISOString().slice(0, 16);
+    setDeadlineInput(formattedDate);
+    handleUpdateSettings(isOpen, formattedDate);
+  };
+
   useEffect(() => {
     const targetDate = deadlineInput ? new Date(deadlineInput).getTime() : new Date('2026-12-31T23:59:59').getTime();
     const interval = setInterval(() => {
@@ -262,6 +263,32 @@ export default function AdminPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">Set Voting Deadline & Expiry</label>
+              
+              {/* Quick Preset Buttons (30 Mins, 1 Hour, 2 Hours, etc.) */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                <button
+                  onClick={() => handleQuickDeadline(30)}
+                  disabled={updatingSettings}
+                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
+                >
+                  ⚡ +30 Mins
+                </button>
+                <button
+                  onClick={() => handleQuickDeadline(60)}
+                  disabled={updatingSettings}
+                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
+                >
+                  ⚡ +1 Hour
+                </button>
+                <button
+                  onClick={() => handleQuickDeadline(120)}
+                  disabled={updatingSettings}
+                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
+                >
+                  ⚡ +2 Hours
+                </button>
+              </div>
+
               <input
                 type="datetime-local"
                 value={deadlineInput}
@@ -273,7 +300,7 @@ export default function AdminPage() {
                 disabled={updatingSettings}
                 className="mt-3 w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
               >
-                {updatingSettings ? 'Saving Deadline...' : 'Save Deadline'}
+                {updatingSettings ? 'Saving Deadline...' : 'Save Custom Deadline'}
               </button>
             </div>
 
