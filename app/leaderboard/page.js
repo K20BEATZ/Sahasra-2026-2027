@@ -9,13 +9,62 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true);
   const [votingId, setVotingId] = useState(null);
 
-  // Countdown Timer State
+  // Admin පාලක පුවරුවෙන් පාලනය වන ස්ටේටස්
+  const [isOpen, setIsOpen] = useState(true);
+  const [deadline, setDeadline] = useState(null);
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+  const [votingEnded, setVotingEnded] = useState(false);
+
+  // ඩේටා සහ සෙටින්ග්ස් ලබා ගැනීම (Real-time වගේ හැම තිස්සෙම චෙක් වේ)
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Admin Settings ලබා ගැනීම (is_open සහ deadline)
+      const { data: settingsData } = await supabase
+        .from('voting_settings')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (settingsData) {
+        setIsOpen(settingsData.is_open);
+        setDeadline(settingsData.deadline);
+      }
+
+      // 2. ටීම් ලැයිස්තුව ලබා ගැනීම
+      const { data, error } = await supabase
+        .from('teams')
+        .select('*')
+        .order('votes', { ascending: false });
+
+      if (error) throw error;
+      setTeams(data || []);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const targetDate = new Date('2026-12-31T23:59:59').getTime();
+    fetchData();
 
-    const interval = setInterval(() => {
+    // තත්පර 3කට වරක් Admin Settings ස්වයංක්‍රීයව චෙක් කිරීම (Admin Close කළ සැණින් යුසර්ගේ පේජ් එකද ක්ෂණිකව වැසීමට)
+    const intervalCheck = setInterval(() => {
+      fetchData();
+    }, 3000);
+
+    return () => clearInterval(intervalCheck);
+  }, []);
+
+  // Admin ඩෙඩ්ලයින් එකට සමානව ක්‍රියාත්මක වන Live Countdown ටයිමර් එක
+  useEffect(() => {
+    if (!deadline) return;
+
+    const targetDate = new Date(deadline).getTime();
+
+    const updateTimer = () => {
       const now = new Date().getTime();
       const difference = targetDate - now;
 
@@ -26,55 +75,115 @@ export default function LeaderboardPage() {
           minutes: Math.floor((difference / 1000 / 60) % 60),
           seconds: Math.floor((difference / 1000) % 60),
         });
+        setVotingEnded(false);
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        setVotingEnded(true);
       }
-    }, 1000);
+    };
 
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
-  }, []);
+  }, [deadline]);
 
-  const fetchTeams = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('teams')
-        .select('*')
-        .order('votes', { ascending: false });
-
-      if (error) throw error;
-      setTeams(data || []);
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
+  // IP Restriction සහ ඡන්දය සටහන් කිරීම
   const handleVote = async (id, currentVotes) => {
+    // Admin විසින් Close කර ඇත්නම් හෝ ටයිමර් එක අවසන් නම්
+    if (!isOpen || votingEnded) {
+      alert('⚠️ Voting is currently closed by administrators!');
+      return;
+    }
+
     setVotingId(id);
     try {
+      // 1. යුසර්ගේ IP Address එක ලබා ගැනීම
+      let userIp = 'unknown_ip';
+      try {
+        const ipRes = await fetch('https://api.ipify.org?format=json');
+        const ipData = await ipRes.json();
+        userIp = ipData.ip;
+      } catch (err) {
+        console.warn('Could not fetch IP');
+      }
+
+      // 2. මෙම IP එකෙන් මීට පෙර ඡන්දයක් දී ඇත්දැයි පරීක්ෂා කිරීම
+      const { data: existingVotes, error: checkError } = await supabase
+        .from('votes')
+        .select('*')
+        .eq('ip_address', userIp);
+
+      if (checkError) throw checkError;
+
+      if (existingVotes && existingVotes.length > 0) {
+        alert('❌ You have already cast your vote from this device/network! Multiple votes are not allowed.');
+        setVotingId(null);
+        return;
+      }
+
+      // 3. votes ටේබල් එකට IP එක සහ Team ID එක ඇතුළත් කිරීම
+      const { error: voteInsertError } = await supabase
+        .from('votes')
+        .insert([{ team_id: id, ip_address: userIp }]);
+
+      if (voteInsertError) throw voteInsertError;
+
+      // 4. ටීම් එකේ ඡන්ද ගණන 1කින් වැඩි කිරීම
       const { error } = await supabase
         .from('teams')
         .update({ votes: currentVotes + 1 })
         .eq('id', id);
 
       if (error) throw error;
-      fetchTeams();
+      
+      alert('✅ Your vote has been successfully recorded!');
+      fetchData();
     } catch (error) {
       console.error('Error voting:', error);
+      alert('Error voting: ' + error.message);
     } finally {
       setVotingId(null);
     }
   };
 
+  // මෙහිදී Admin විසින් is_open false කළහොත් හෝ votingEnded true වුවහොත් පිටුව Blur වේ
+  const isClosed = !isOpen || votingEnded;
+
   return (
-    <main className="min-h-screen bg-[#05060a] text-slate-100 p-6 md:p-12 relative overflow-hidden">
+    <main className="min-h-screen bg-[#05060a] text-slate-100 p-6 md:p-12 relative overflow-hidden flex flex-col justify-center items-center">
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="max-w-4xl mx-auto relative z-10 space-y-8">
+      {/* ඡන්දය Admin විසින් වැසී ඇත්නම් හෝ කාලය අවසන් නම් මතුවන Blur / Overlay Pop-up Screen එක */}
+      {isClosed && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md">
+          <div className="max-w-md w-full bg-slate-900/90 border border-slate-800 p-8 rounded-3xl text-center shadow-2xl space-y-4 animate-in fade-in zoom-in duration-300">
+            <div className="w-16 h-16 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center justify-center mx-auto text-red-400 text-2xl font-black">
+              ⏳
+            </div>
+            <span className="bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+              Session Terminated
+            </span>
+            <h2 className="text-3xl font-black bg-gradient-to-r from-red-400 to-amber-500 bg-clip-text text-transparent">
+              VOTING CLOSED!
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Voting has been officially closed by the administrators or the designated timeframe has expired. Thank you for participating!
+            </p>
+            <div className="pt-2">
+              <Link 
+                href="/" 
+                className="inline-block w-full bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold py-3 rounded-xl text-xs transition-all border border-slate-700"
+              >
+                Return to Home Page
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ප්‍රධාන කන්ටෙන්ට් එක (isClosed නම් පිටුව Blur වී පසුපසට යයි) */}
+      <div className={`max-w-4xl w-full relative z-10 space-y-8 transition-all duration-500 ${isClosed ? 'blur-sm pointer-events-none select-none' : ''}`}>
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
             <span className="bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest">
