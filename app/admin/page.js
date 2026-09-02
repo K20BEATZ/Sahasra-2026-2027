@@ -25,6 +25,12 @@ export default function AdminPage() {
 
   const [teams, setTeams] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Voting settings states
+  const [isOpen, setIsOpen] = useState(true);
+  const [deadlineInput, setDeadlineInput] = useState('');
+  const [updatingSettings, setUpdatingSettings] = useState(false);
+
   const [timeLeft, setTimeLeft] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
   const handleLogin = (e) => {
@@ -43,8 +49,71 @@ export default function AdminPage() {
     }
   };
 
+  // ඩේටාබෙස් එකෙන් Voting settings සහ Teams ලබා ගැනීම
+  const fetchSettingsAndTeams = async () => {
+    try {
+      setLoading(true);
+
+      // 1. Fetch voting settings
+      const { data: settingsData } = await supabase
+        .from('voting_settings')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (settingsData) {
+        setIsOpen(settingsData.is_open);
+        if (settingsData.deadline) {
+          const formattedDate = new Date(settingsData.deadline).toISOString().slice(0, 16);
+          setDeadlineInput(formattedDate);
+        }
+      }
+
+      // 2. Fetch teams
+      const { data: teamsData, error } = await supabase
+        .from('teams')
+        .select('*')
+        .order('votes', { ascending: false });
+
+      if (error) throw error;
+      setTeams(teamsData || []);
+    } catch (error) {
+      console.error('Error fetching admin data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const targetDate = new Date('2026-12-31T23:59:59').getTime();
+    if (isLoggedIn) {
+      fetchSettingsAndTeams();
+    }
+  }, [isLoggedIn]);
+
+  // Voting settings වෙනස් කිරීම (Open/Close සහ Deadline Update කිරීම)
+  const handleUpdateSettings = async (newStatus, newDeadline) => {
+    try {
+      setUpdatingSettings(true);
+      const { error } = await supabase
+        .from('voting_settings')
+        .upsert({ 
+          id: 1, 
+          is_open: newStatus, 
+          deadline: newDeadline ? new Date(newDeadline).toISOString() : null 
+        });
+
+      if (error) throw error;
+      alert('Voting settings updated successfully!');
+    } catch (error) {
+      alert('Error updating settings: ' + error.message);
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
+  // Countdown timer logic
+  useEffect(() => {
+    const targetDate = deadlineInput ? new Date(deadlineInput).getTime() : new Date('2026-12-31T23:59:59').getTime();
     const interval = setInterval(() => {
       const now = new Date().getTime();
       const difference = targetDate - now;
@@ -60,33 +129,7 @@ export default function AdminPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, []);
-
-  const fetchTeams = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('teams')
-        .select('*')
-        .order('votes', { ascending: false });
-
-      if (error) {
-        console.error('Supabase error details:', error.message || error);
-        throw error;
-      }
-      setTeams(data || []);
-    } catch (error) {
-      console.error('Error fetching teams:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (isLoggedIn) {
-      fetchTeams();
-    }
-  }, [isLoggedIn]);
+  }, [deadlineInput]);
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this team?')) return;
@@ -94,7 +137,7 @@ export default function AdminPage() {
     try {
       const { error } = await supabase.from('teams').delete().eq('id', id);
       if (error) throw error;
-      fetchTeams();
+      fetchSettingsAndTeams();
     } catch (error) {
       console.error('Error deleting team:', error);
     }
@@ -192,28 +235,69 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Countdown Timer Box */}
-        <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl backdrop-blur-xl shadow-xl flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h3 className="text-sm font-bold text-slate-200">Voting Ends In</h3>
-            <p className="text-xs text-slate-400">Competition schedule closure countdown</p>
+        {/* Voting Status Control & Deadline Panel */}
+        <div className="bg-slate-900/80 border border-slate-800 p-6 rounded-3xl backdrop-blur-xl shadow-xl space-y-6">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+            <div>
+              <h3 className="text-base font-bold text-slate-100">Voting Access Status</h3>
+              <p className="text-xs text-slate-400">Control whether users can submit votes or register teams</p>
+            </div>
+            <button
+              onClick={() => {
+                const newStatus = !isOpen;
+                setIsOpen(newStatus);
+                handleUpdateSettings(newStatus, deadlineInput);
+              }}
+              disabled={updatingSettings}
+              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                isOpen 
+                  ? 'bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white' 
+                  : 'bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white'
+              }`}
+            >
+              {isOpen ? '🔴 Close Voting Now' : '🟢 Open Voting Now'}
+            </button>
           </div>
-          <div className="grid grid-cols-4 gap-3 text-center">
-            <div className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl min-w-[60px]">
-              <span className="text-lg font-black text-amber-400">{timeLeft.days}</span>
-              <p className="text-[10px] text-slate-500 uppercase">Days</p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-2">Set Voting Deadline & Expiry</label>
+              <input
+                type="datetime-local"
+                value={deadlineInput}
+                onChange={(e) => setDeadlineInput(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors"
+              />
+              <button
+                onClick={() => handleUpdateSettings(isOpen, deadlineInput)}
+                disabled={updatingSettings}
+                className="mt-3 w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-2 rounded-xl text-xs transition-all shadow-md shadow-amber-500/20"
+              >
+                {updatingSettings ? 'Saving Deadline...' : 'Save Deadline'}
+              </button>
             </div>
-            <div className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl min-w-[60px]">
-              <span className="text-lg font-black text-amber-400">{timeLeft.hours}</span>
-              <p className="text-[10px] text-slate-500 uppercase">Hours</p>
-            </div>
-            <div className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl min-w-[60px]">
-              <span className="text-lg font-black text-amber-400">{timeLeft.minutes}</span>
-              <p className="text-[10px] text-slate-500 uppercase">Mins</p>
-            </div>
-            <div className="bg-slate-950 border border-slate-800 px-3 py-2 rounded-xl min-w-[60px]">
-              <span className="text-lg font-black text-amber-400">{timeLeft.seconds}</span>
-              <p className="text-[10px] text-slate-500 uppercase">Secs</p>
+
+            {/* Countdown Display */}
+            <div className="bg-slate-950 border border-slate-800 p-4 rounded-2xl">
+              <p className="text-xs font-semibold text-slate-400 mb-2">Time Remaining Until Deadline</p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                <div className="bg-slate-900 border border-slate-800 px-2 py-2 rounded-xl">
+                  <span className="text-base font-black text-amber-400">{timeLeft.days}</span>
+                  <p className="text-[9px] text-slate-500 uppercase">Days</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 px-2 py-2 rounded-xl">
+                  <span className="text-base font-black text-amber-400">{timeLeft.hours}</span>
+                  <p className="text-[9px] text-slate-500 uppercase">Hours</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 px-2 py-2 rounded-xl">
+                  <span className="text-base font-black text-amber-400">{timeLeft.minutes}</span>
+                  <p className="text-[9px] text-slate-500 uppercase">Mins</p>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 px-2 py-2 rounded-xl">
+                  <span className="text-base font-black text-amber-400">{timeLeft.seconds}</span>
+                  <p className="text-[9px] text-slate-500 uppercase">Secs</p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
