@@ -8,23 +8,37 @@ function LoaderContent() {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
 
+  // Page එක මාරු වී අවසන් වූ විට ලෝඩින් එක ඉවත් වේ
   useEffect(() => {
-    // ඕනෑම පේජ් එකක් හෝ ටැබ් එකක් වෙනස් වන විට ලෝඩින් පෙන්වයි
-    setLoading(true);
-    
-    // ටික වෙලාවකින් (උදා: තත්පර 0.7 කින්) ලෝඩින් එක අයින් වී අලුත් පේජ් එක පෙන්වයි
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 700);
-
-    return () => clearTimeout(timer);
+    setLoading(false);
   }, [pathname, searchParams]);
+
+  useEffect(() => {
+    // වෙබ් අඩවියේ ඕනෑම ලින්ක් එකක් ක්ලික් කළ වහාම ලෝඩර් එක පෙන්වයි
+    const handleGlobalClick = (e) => {
+      const link = e.target.closest('a');
+      if (link && link.href) {
+        const targetUrl = new URL(link.href, window.location.origin);
+        // එකම පේජ් එකේ # hash ලින්ක් හෝ වෙනත් ඩොමේන් වලට නොවන, වෙනත් internal page එකකට යන විට පමණක්
+        if (
+          targetUrl.origin === window.location.origin &&
+          targetUrl.pathname !== window.location.pathname &&
+          !link.getAttribute('target')
+        ) {
+          setLoading(true);
+        }
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick, true);
+    return () => document.removeEventListener('click', handleGlobalClick, true);
+  }, []);
 
   if (!loading) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#05060a]/95 backdrop-blur-2xl flex flex-col justify-center items-center p-6 transition-all duration-300">
-      {/* Background Premium Glow Effects */}
+    <div className="fixed inset-0 z-[999999] bg-[#05060a]/95 backdrop-blur-2xl flex flex-col justify-center items-center p-6 transition-all duration-300">
+      {/* Background Glow Effects */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-amber-500/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
       <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-amber-600/20 rounded-full blur-3xl pointer-events-none animate-pulse" />
 
@@ -41,7 +55,7 @@ function LoaderContent() {
             Sahasra 2026
           </h3>
           <p className="text-xs text-slate-400 font-medium tracking-wide animate-pulse">
-            Switching page, please wait...
+            Switching experience...
           </p>
         </div>
       </div>
