@@ -8,7 +8,7 @@ export default function RegisterPage() {
   const [teamName, setTeamName] = useState('');
   const [university, setUniversity] = useState('Rajarata University of Sri Lanka');
   
-  // Members ලා 15 දෙනා සඳහා States (Array එකක් ලෙස)
+  // Members ලා 15 දෙනා සඳහා States
   const [members, setMembers] = useState(Array(15).fill(''));
   
   const [loading, setLoading] = useState(false);
@@ -149,7 +149,12 @@ export default function RegisterPage() {
               {members.map((member, index) => (
                 <div key={index}>
                   <label className="block text-[11px] text-slate-400 mb-1">
-                    Member {index + 1} {index === 0 ? '(Team Leader)' : ''} {index < 12 ? '<span class="text-red-400">*</span>' : '(Optional)'}
+                    Member {index + 1} {index === 0 ? '(Team Leader)' : ''}{' '}
+                    {index < 12 ? (
+                      <span className="text-red-400">*</span>
+                    ) : (
+                      <span className="text-slate-500">(Optional)</span>
+                    )}
                   </label>
                   <input
                     type="text"
