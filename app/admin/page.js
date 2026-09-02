@@ -117,6 +117,42 @@ export default function AdminPage() {
     }
   };
 
+  // සියලුම ටීම් වල ඡන්ද 0 කිරීමට සහ votes ටේබල් එක ක්ලියර් කිරීමට
+  const handleResetAllVotes = async () => {
+    if (!confirm('⚠️ Are you sure you want to reset votes to 0 for ALL teams? This will clear all vote records!')) {
+      return;
+    }
+
+    try {
+      setUpdatingSettings(true);
+
+      // 1. ඡන්ද සටහන් වී ඇති votes table එක හිස් කිරීම (IP Restrictions අලුතින් පටන් ගැනීමට)
+      const { error: votesError } = await supabase
+        .from('votes')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // සියලුම පේළි මකා දැමීමට
+
+      if (votesError) {
+        console.warn('Votes table clear warning:', votesError.message);
+      }
+
+      // 2. teams table එකේ votes කالم් එක 0 කිරීමට
+      const { error: teamsError } = await supabase
+        .from('teams')
+        .update({ votes: 0 })
+        .neq('id', 0); // සියලුම ටීම් වලට අදාළව
+
+      if (teamsError) throw teamsError;
+
+      alert('All team votes have been successfully reset to 0!');
+      fetchSettingsAndTeams();
+    } catch (error) {
+      alert('Error resetting votes: ' + error.message);
+    } finally {
+      setUpdatingSettings(false);
+    }
+  };
+
   // වත්මන් වේලාවට (Current Time) පැය හෝ විනාඩි නිවැරදිව එකතු කිරීම
   const handleCustomDurationPreset = (type) => {
     const title = type === 'hours' ? 'Enter number of Hours to add (e.g. 6):' : 'Enter number of Minutes to add:';
@@ -141,7 +177,7 @@ export default function AdminPage() {
     handleUpdateSettings(isOpen, formattedDate);
   };
 
-  // Live Countdown ටයිමර් එක (Voting Close කර ඇත්නම් හෝ කාලය අවසන් නම් 00 පෙන්වයි)
+  // Live Countdown ටයිමර් එක
   useEffect(() => {
     if (!isOpen) {
       setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
@@ -285,21 +321,33 @@ export default function AdminPage() {
               <h3 className="text-base font-bold text-slate-100">Voting Access Status</h3>
               <p className="text-xs text-slate-400">Control whether users can submit votes or register teams</p>
             </div>
-            <button
-              onClick={() => {
-                const newStatus = !isOpen;
-                setIsOpen(newStatus);
-                handleUpdateSettings(newStatus, deadlineInput);
-              }}
-              disabled={updatingSettings}
-              className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
-                isOpen 
-                  ? 'bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white' 
-                  : 'bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white'
-              }`}
-            >
-              {isOpen ? '🔴 Close Voting Now' : '🟢 Open Voting Now'}
-            </button>
+            
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Reset All Votes Button */}
+              <button
+                onClick={handleResetAllVotes}
+                disabled={updatingSettings}
+                className="px-4 py-2.5 rounded-xl font-bold text-xs bg-red-600/20 border border-red-500/40 text-red-400 hover:bg-red-600 hover:text-white transition-all shadow-md disabled:opacity-50"
+              >
+                🔄 Reset All Votes to 0
+              </button>
+
+              <button
+                onClick={() => {
+                  const newStatus = !isOpen;
+                  setIsOpen(newStatus);
+                  handleUpdateSettings(newStatus, deadlineInput);
+                }}
+                disabled={updatingSettings}
+                className={`px-5 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                  isOpen 
+                    ? 'bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white' 
+                    : 'bg-green-500/10 border border-green-500/30 text-green-400 hover:bg-green-500 hover:text-white'
+                }`}
+              >
+                {isOpen ? '🔴 Close Voting Now' : '🟢 Open Voting Now'}
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
