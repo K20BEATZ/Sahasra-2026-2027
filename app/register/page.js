@@ -26,22 +26,40 @@ export default function RegisterPage() {
     setLoading(true);
     setMessage({ text: '', type: '' });
 
-    // හිස් නොමැති සාමාජිකයන් පමණක් ෆිල්ටර් කර ගැනීම (අවශ්‍ය නම් සියල්ල හෝ හිස් ඒවා ඉවත් කිරීමට)
-    const filteredMembers = members.filter(m => m.trim() !== '');
-
     try {
-      const { data, error } = await supabase
+      // 1. තෝරාගත් විශ්වවිද්‍යාලයෙන් දැනටමත් Team එකක් Register වී ඇත්දැයි පරීක්ෂා කිරීම
+      const { data: existingTeams, error: checkError } = await supabase
+        .from('teams')
+        .select('id, team_name')
+        .eq('university', university);
+
+      if (checkError) throw checkError;
+
+      if (existingTeams && existingTeams.length > 0) {
+        setMessage({ 
+          text: `Registration failed! ${university} has already registered a team ("${existingTeams[0].team_name}"). Only one team per university is allowed.`, 
+          type: 'error' 
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 2. හිස් නොමැති සාමාජිකයන් පමණක් ෆිල්ටර් කර ගැනීම
+      const filteredMembers = members.filter(m => m.trim() !== '');
+
+      // 3. අලුත් Team එක Database එකට ඇතුළත් කිරීම
+      const { error: insertError } = await supabase
         .from('teams')
         .insert([
           {
             team_name: teamName,
             university: university,
-            members: filteredMembers, // සාමාජිකයන්ගේ ලැයිස්තුව Database එකට යැවීම
+            members: filteredMembers, 
             votes: 0
           }
         ]);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
       setMessage({ text: 'Team registered successfully with all members!', type: 'success' });
       setTeamName('');
@@ -94,7 +112,7 @@ export default function RegisterPage() {
 
           {/* University Dropdown */}
           <div>
-            <label className="block text-xs font-semibold text-slate-400 mb-1">University</label>
+            <label className="block text-xs font-semibold text-slate-400 mb-1">University (Only 1 team allowed per university)</label>
             <select
               value={university}
               onChange={(e) => setUniversity(e.target.value)}
@@ -123,10 +141,9 @@ export default function RegisterPage() {
                   <label className="block text-[11px] text-slate-400 mb-1">Member {index + 1} {index === 0 ? '(Team Leader)' : ''}</label>
                   <input
                     type="text"
-                    required={index === 0} // පළමුකෙනා අනිවාර්ය විය යුතුය
+                    required={index === 0} 
                     value={member}
                     onChange={(e) => handleMemberChange(index, e.target.value)}
-                    // පළමු input එකට ඔබ ඉල්ලූ උදාහරණය placeholder එක ලෙස පෙන්වයි
                     placeholder={index === 0 ? "e.g. L.A.Kavindu Navodyana Liyana arachchi" : `Enter member ${index + 1} name`}
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-amber-500 transition-colors"
                   />
