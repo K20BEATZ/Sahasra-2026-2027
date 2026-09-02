@@ -47,6 +47,13 @@ export default function AdminPage() {
     }
   };
 
+  // ලංකාවේ වෙලාව නිවැරදිව datetime-local input එකට සෙට් කරගැනීමට Helper Function එකක්
+  const toLocalISOString = (date) => {
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    return localISOTime;
+  };
+
   const fetchSettingsAndTeams = async () => {
     try {
       setLoading(true);
@@ -60,7 +67,7 @@ export default function AdminPage() {
       if (settingsData) {
         setIsOpen(settingsData.is_open);
         if (settingsData.deadline) {
-          const formattedDate = new Date(settingsData.deadline).toISOString().slice(0, 16);
+          const formattedDate = toLocalISOString(new Date(settingsData.deadline));
           setDeadlineInput(formattedDate);
         }
       }
@@ -88,12 +95,15 @@ export default function AdminPage() {
   const handleUpdateSettings = async (newStatus, newDeadline) => {
     try {
       setUpdatingSettings(true);
+      // datetime-local අගය නිවැරදි ISO string එකක් බවට පත් කිරීම
+      const isoDeadline = newDeadline ? new Date(newDeadline).toISOString() : null;
+
       const { error } = await supabase
         .from('voting_settings')
         .upsert({ 
           id: 1, 
           is_open: newStatus, 
-          deadline: newDeadline ? new Date(newDeadline).toISOString() : null 
+          deadline: isoDeadline
         });
 
       if (error) throw error;
@@ -105,13 +115,13 @@ export default function AdminPage() {
     }
   };
 
-  // Custom Prompt මඟින් පැය හෝ විනාඩි ගණන ඇතුළත් කර ඩෙඩ්ලයින් එක සකස් කිරීම
+  // නිවැරදිව වත්මන් වේලාවට (Current Time) පැය හෝ විනාඩි එකතු කිරීම
   const handleCustomDurationPreset = (type) => {
     const title = type === 'hours' ? 'Enter number of Hours to add:' : 'Enter number of Minutes to add:';
     const defaultValue = type === 'hours' ? '1' : '30';
     
     const userInput = prompt(title, defaultValue);
-    if (userInput === null) return; // User Cancel කළොත්
+    if (userInput === null) return;
 
     const num = parseFloat(userInput);
     if (isNaN(num) || num <= 0) {
@@ -119,15 +129,17 @@ export default function AdminPage() {
       return;
     }
 
+    const now = new Date();
     const millisecondsToAdd = type === 'hours' ? num * 60 * 60 * 1000 : num * 60 * 1000;
-    const futureDate = new Date(new Date().getTime() + millisecondsToAdd);
-    const formattedDate = futureDate.toISOString().slice(0, 16);
+    const futureDate = new Date(now.getTime() + millisecondsToAdd);
+    
+    const formattedDate = toLocalISOString(futureDate);
     
     setDeadlineInput(formattedDate);
     handleUpdateSettings(isOpen, formattedDate);
   };
 
-  // Admin පැනල් එකේ Live Countdown ටයිමර් එක (තත්පරයෙන් තත්පරයට අඩුවීම)
+  // Live Countdown ටයිමර් එක
   useEffect(() => {
     if (!deadlineInput) return;
 
@@ -287,7 +299,6 @@ export default function AdminPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">Set Voting Deadline & Expiry</label>
               
-              {/* Dynamic Preset Buttons (පැය හෝ විනාඩි ගණන අපිටම තෝරාගත හැක) */}
               <div className="flex flex-wrap gap-2 mb-3">
                 <button
                   onClick={() => handleCustomDurationPreset('hours')}
