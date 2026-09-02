@@ -105,17 +105,35 @@ export default function AdminPage() {
     }
   };
 
-  const handleQuickDeadline = (minutesFromNow) => {
-    const futureDate = new Date(new Date().getTime() + minutesFromNow * 60000);
+  // Custom Prompt මඟින් පැය හෝ විනාඩි ගණන ඇතුළත් කර ඩෙඩ්ලයින් එක සකස් කිරීම
+  const handleCustomDurationPreset = (type) => {
+    const title = type === 'hours' ? 'Enter number of Hours to add:' : 'Enter number of Minutes to add:';
+    const defaultValue = type === 'hours' ? '1' : '30';
+    
+    const userInput = prompt(title, defaultValue);
+    if (userInput === null) return; // User Cancel කළොත්
+
+    const num = parseFloat(userInput);
+    if (isNaN(num) || num <= 0) {
+      alert('Please enter a valid positive number!');
+      return;
+    }
+
+    const millisecondsToAdd = type === 'hours' ? num * 60 * 60 * 1000 : num * 60 * 1000;
+    const futureDate = new Date(new Date().getTime() + millisecondsToAdd);
     const formattedDate = futureDate.toISOString().slice(0, 16);
+    
     setDeadlineInput(formattedDate);
     handleUpdateSettings(isOpen, formattedDate);
   };
 
-  // නියමිත ඩෙඩ්ලයින් එකට ඉතිරිව ඇති කාලය ගණනය කිරීම
+  // Admin පැනල් එකේ Live Countdown ටයිමර් එක (තත්පරයෙන් තත්පරයට අඩුවීම)
   useEffect(() => {
-    const targetDate = deadlineInput ? new Date(deadlineInput).getTime() : new Date().getTime();
-    const interval = setInterval(() => {
+    if (!deadlineInput) return;
+
+    const targetDate = new Date(deadlineInput).getTime();
+
+    const updateTimer = () => {
       const now = new Date().getTime();
       const difference = targetDate - now;
 
@@ -129,7 +147,10 @@ export default function AdminPage() {
       } else {
         setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
-    }, 1000);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
   }, [deadlineInput]);
@@ -266,28 +287,21 @@ export default function AdminPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">Set Voting Deadline & Expiry</label>
               
-              {/* Quick Preset Buttons */}
+              {/* Dynamic Preset Buttons (පැය හෝ විනාඩි ගණන අපිටම තෝරාගත හැක) */}
               <div className="flex flex-wrap gap-2 mb-3">
                 <button
-                  onClick={() => handleQuickDeadline(30)}
+                  onClick={() => handleCustomDurationPreset('hours')}
                   disabled={updatingSettings}
                   className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
                 >
-                  ⚡ +30 Mins
+                  ⏱️ Add Custom Hours...
                 </button>
                 <button
-                  onClick={() => handleQuickDeadline(60)}
+                  onClick={() => handleCustomDurationPreset('minutes')}
                   disabled={updatingSettings}
                   className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
                 >
-                  ⚡ +1 Hour
-                </button>
-                <button
-                  onClick={() => handleQuickDeadline(120)}
-                  disabled={updatingSettings}
-                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
-                >
-                  ⚡ +2 Hours
+                  ⏱️ Add Custom Mins...
                 </button>
               </div>
 
