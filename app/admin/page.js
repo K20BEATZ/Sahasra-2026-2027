@@ -105,7 +105,6 @@ export default function AdminPage() {
     }
   };
 
-  // ඉක්මනින් මිනිත්තු හෝ පැය ගණනකින් ඩෙඩ්ලයින් එක සෙට් කරන ෆන්ක්ෂන් එක
   const handleQuickDeadline = (minutesFromNow) => {
     const futureDate = new Date(new Date().getTime() + minutesFromNow * 60000);
     const formattedDate = futureDate.toISOString().slice(0, 16);
@@ -113,8 +112,9 @@ export default function AdminPage() {
     handleUpdateSettings(isOpen, formattedDate);
   };
 
+  // නියමිත ඩෙඩ්ලයින් එකට ඉතිරිව ඇති කාලය ගණනය කිරීම
   useEffect(() => {
-    const targetDate = deadlineInput ? new Date(deadlineInput).getTime() : new Date('2026-12-31T23:59:59').getTime();
+    const targetDate = deadlineInput ? new Date(deadlineInput).getTime() : new Date().getTime();
     const interval = setInterval(() => {
       const now = new Date().getTime();
       const difference = targetDate - now;
@@ -126,6 +126,8 @@ export default function AdminPage() {
           minutes: Math.floor((difference / 1000 / 60) % 60),
           seconds: Math.floor((difference / 1000) % 60),
         });
+      } else {
+        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
       }
     }, 1000);
 
@@ -264,7 +266,7 @@ export default function AdminPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">Set Voting Deadline & Expiry</label>
               
-              {/* Quick Preset Buttons (30 Mins, 1 Hour, 2 Hours, etc.) */}
+              {/* Quick Preset Buttons */}
               <div className="flex flex-wrap gap-2 mb-3">
                 <button
                   onClick={() => handleQuickDeadline(30)}
