@@ -141,8 +141,13 @@ export default function AdminPage() {
     handleUpdateSettings(isOpen, formattedDate);
   };
 
-  // Live Countdown ටයිමර් එක
+  // Live Countdown ටයිමර් එක (Voting Close කර ඇත්නම් හෝ කාලය අවසන් නම් 00 පෙන්වයි)
   useEffect(() => {
+    if (!isOpen) {
+      setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+      return;
+    }
+
     if (!deadlineInput) return;
 
     const targetDate = new Date(deadlineInput).getTime();
@@ -167,7 +172,7 @@ export default function AdminPage() {
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
-  }, [deadlineInput]);
+  }, [deadlineInput, isOpen]);
 
   const handleDelete = async (id) => {
     if (!confirm('Are you sure you want to delete this team?')) return;
