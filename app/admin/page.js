@@ -117,9 +117,9 @@ export default function AdminPage() {
     }
   };
 
-  // වත්මන් වේලාවට (Current Time) පැය හෝ විනාඩි නිවැරදිව එකතු කිරීම / Reset කර අලුතින් පටන් ගැනීම
+  // වත්මන් වේලාවට (Current Time) පැය හෝ විනාඩි නිවැරදිව එකතු කිරීම
   const handleCustomDurationPreset = (type) => {
-    const title = type === 'hours' ? 'Enter number of Hours to add from now (e.g. 6):' : 'Enter number of Minutes to add from now:';
+    const title = type === 'hours' ? 'Enter number of Hours to add (e.g. 6):' : 'Enter number of Minutes to add:';
     const defaultValue = type === 'hours' ? '6' : '30';
     
     const userInput = prompt(title, defaultValue);
@@ -138,8 +138,7 @@ export default function AdminPage() {
     const formattedDate = formatDateTimeLocal(futureDate);
     
     setDeadlineInput(formattedDate);
-    setIsOpen(true); // Reset කරද්දී ස්වයංක්‍රීයව Voting එකත් Open කරයි
-    handleUpdateSettings(true, formattedDate);
+    handleUpdateSettings(isOpen, formattedDate);
   };
 
   // Live Countdown ටයිමර් එක (Voting Close කර ඇත්නම් හෝ කාලය අවසන් නම් 00 පෙන්වයි)
@@ -307,21 +306,20 @@ export default function AdminPage() {
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-2">Set Voting Deadline & Expiry</label>
               
-              {/* Reset & Restart Presets */}
               <div className="flex flex-wrap gap-2 mb-3">
                 <button
                   onClick={() => handleCustomDurationPreset('hours')}
                   disabled={updatingSettings}
-                  className="bg-amber-500/10 hover:bg-amber-500 hover:text-slate-950 text-amber-400 text-[11px] font-semibold px-3 py-2 rounded-lg border border-amber-500/30 transition-all shadow-sm"
+                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
                 >
-                  🔄 Reset & Restart (Hours)...
+                  ⏱️ Add Custom Hours...
                 </button>
                 <button
                   onClick={() => handleCustomDurationPreset('minutes')}
                   disabled={updatingSettings}
-                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-2 rounded-lg border border-slate-700 transition-all"
+                  className="bg-slate-800 hover:bg-amber-500 hover:text-slate-950 text-slate-300 text-[11px] font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition-all"
                 >
-                  🔄 Reset & Restart (Mins)...
+                  ⏱️ Add Custom Mins...
                 </button>
               </div>
 
