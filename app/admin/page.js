@@ -117,20 +117,20 @@ export default function AdminPage() {
     }
   };
 
-  // සියලුම ටීම් වල ඡන්ද 0 කිරීමට සහ votes ටේබල් එක ක්ලියර් කිරීමට
+  // සියලුම ටීම් වල ඡන්ද 0 කිරීමට සහ votes ටේබල් එක ක්ලියර් කිරීමට (IP restriction මැකීමට)
   const handleResetAllVotes = async () => {
-    if (!confirm('⚠️ Are you sure you want to reset votes to 0 for ALL teams? This will clear all vote records!')) {
+    if (!confirm('⚠️ Are you sure you want to reset votes to 0 for ALL teams? This will clear all vote records and IP restrictions!')) {
       return;
     }
 
     try {
       setUpdatingSettings(true);
 
-      // 1. ඡන්ද සටහන් වී ඇති votes table එක හිස් කිරීම (IP Restrictions අලුතින් පටන් ගැනීමට)
+      // 1. votes ටේබල් එක හිස් කිරීම (IP Restrictions අලුතින් පටන් ගැනීමට)
       const { error: votesError } = await supabase
         .from('votes')
         .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000'); // සියලුම පේළි මකා දැමීමට
+        .neq('id', '00000000-0000-0000-0000-000000000000'); 
 
       if (votesError) {
         console.warn('Votes table clear warning:', votesError.message);
@@ -140,11 +140,11 @@ export default function AdminPage() {
       const { error: teamsError } = await supabase
         .from('teams')
         .update({ votes: 0 })
-        .neq('id', 0); // සියලුම ටීම් වලට අදාළව
+        .neq('id', 0);
 
       if (teamsError) throw teamsError;
 
-      alert('All team votes have been successfully reset to 0!');
+      alert('All team votes and IP restrictions have been successfully reset!');
       fetchSettingsAndTeams();
     } catch (error) {
       alert('Error resetting votes: ' + error.message);
@@ -177,7 +177,7 @@ export default function AdminPage() {
     handleUpdateSettings(isOpen, formattedDate);
   };
 
-  // Live Countdown ටයිමර් එක
+  // Live Countdown ටයිමර් එක Admin පැනල් එක තුළද ක්‍රියාත්මක වීම
   useEffect(() => {
     if (!isOpen) {
       setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
