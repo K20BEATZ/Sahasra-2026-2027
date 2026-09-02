@@ -47,11 +47,14 @@ export default function AdminPage() {
     }
   };
 
-  // ලංකාවේ වෙලාව නිවැරදිව datetime-local input එකට සෙට් කරගැනීමට Helper Function එකක්
-  const toLocalISOString = (date) => {
-    const tzOffset = date.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
-    return localISOTime;
+  // දේශීය වේලාව (Local Time) නිවැරදිව datetime-local input එකට සකස් කරගැනීමට
+  const formatDateTimeLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const fetchSettingsAndTeams = async () => {
@@ -67,7 +70,7 @@ export default function AdminPage() {
       if (settingsData) {
         setIsOpen(settingsData.is_open);
         if (settingsData.deadline) {
-          const formattedDate = toLocalISOString(new Date(settingsData.deadline));
+          const formattedDate = formatDateTimeLocal(new Date(settingsData.deadline));
           setDeadlineInput(formattedDate);
         }
       }
@@ -95,7 +98,6 @@ export default function AdminPage() {
   const handleUpdateSettings = async (newStatus, newDeadline) => {
     try {
       setUpdatingSettings(true);
-      // datetime-local අගය නිවැරදි ISO string එකක් බවට පත් කිරීම
       const isoDeadline = newDeadline ? new Date(newDeadline).toISOString() : null;
 
       const { error } = await supabase
@@ -115,10 +117,10 @@ export default function AdminPage() {
     }
   };
 
-  // නිවැරදිව වත්මන් වේලාවට (Current Time) පැය හෝ විනාඩි එකතු කිරීම
+  // වත්මන් වේලාවට (Current Time) පැය හෝ විනාඩි නිවැරදිව එකතු කිරීම
   const handleCustomDurationPreset = (type) => {
-    const title = type === 'hours' ? 'Enter number of Hours to add:' : 'Enter number of Minutes to add:';
-    const defaultValue = type === 'hours' ? '1' : '30';
+    const title = type === 'hours' ? 'Enter number of Hours to add (e.g. 6):' : 'Enter number of Minutes to add:';
+    const defaultValue = type === 'hours' ? '6' : '30';
     
     const userInput = prompt(title, defaultValue);
     if (userInput === null) return;
@@ -133,7 +135,7 @@ export default function AdminPage() {
     const millisecondsToAdd = type === 'hours' ? num * 60 * 60 * 1000 : num * 60 * 1000;
     const futureDate = new Date(now.getTime() + millisecondsToAdd);
     
-    const formattedDate = toLocalISOString(futureDate);
+    const formattedDate = formatDateTimeLocal(futureDate);
     
     setDeadlineInput(formattedDate);
     handleUpdateSettings(isOpen, formattedDate);
