@@ -27,7 +27,19 @@ export default function RegisterPage() {
     setMessage({ text: '', type: '' });
 
     try {
-      // 1. තෝරාගත් විශ්වවිද්‍යාලයෙන් දැනටමත් Team එකක් Register වී ඇත්දැයි පරීක්ෂා කිරීම
+      // 1. හිස් නොමැති සාමාජිකයන් පමණක් ෆිල්ටර් කර ගණන පරීක්ෂා කිරීම
+      const filteredMembers = members.filter(m => m.trim() !== '');
+
+      if (filteredMembers.length < 12) {
+        setMessage({ 
+          text: `Registration failed! A team must have at least 12 members (You entered ${filteredMembers.length}).`, 
+          type: 'error' 
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 2. තෝරාගත් විශ්වවිද්‍යාලයෙන් දැනටමත් Team එකක් Register වී ඇත්දැයි පරීක්ෂා කිරීම
       const { data: existingTeams, error: checkError } = await supabase
         .from('teams')
         .select('id, team_name')
@@ -43,9 +55,6 @@ export default function RegisterPage() {
         setLoading(false);
         return;
       }
-
-      // 2. හිස් නොමැති සාමාජිකයන් පමණක් ෆිල්ටර් කර ගැනීම
-      const filteredMembers = members.filter(m => m.trim() !== '');
 
       // 3. අලුත් Team එක Database එකට ඇතුළත් කිරීම
       const { error: insertError } = await supabase
@@ -81,7 +90,7 @@ export default function RegisterPage() {
       <div className="max-w-xl w-full bg-slate-900/80 border border-slate-800 p-8 rounded-3xl shadow-2xl relative z-10 backdrop-blur-xl my-10">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-black bg-gradient-to-r from-amber-300 to-amber-500 bg-clip-text text-transparent">
-            Team Registration (15 Members)
+            Team Registration (Min 12 Members)
           </h1>
           <Link href="/" className="text-xs text-slate-400 hover:text-amber-400 transition-colors">
             ← Back to Home
@@ -132,16 +141,19 @@ export default function RegisterPage() {
             </select>
           </div>
 
-          {/* 15 Members Input Fields */}
+          {/* Members Input Fields */}
           <div className="pt-2">
-            <label className="block text-sm font-bold text-amber-400 mb-2">Team Members (15 Members)</label>
+            <label className="block text-sm font-bold text-amber-400 mb-1">Team Members (12 to 15 Members)</label>
+            <p className="text-[11px] text-slate-400 mb-3">First 12 members are mandatory. Members 13 to 15 are optional.</p>
             <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar">
               {members.map((member, index) => (
                 <div key={index}>
-                  <label className="block text-[11px] text-slate-400 mb-1">Member {index + 1} {index === 0 ? '(Team Leader)' : ''}</label>
+                  <label className="block text-[11px] text-slate-400 mb-1">
+                    Member {index + 1} {index === 0 ? '(Team Leader)' : ''} {index < 12 ? '<span class="text-red-400">*</span>' : '(Optional)'}
+                  </label>
                   <input
                     type="text"
-                    required={index === 0} 
+                    required={index < 12} // පළමු සාමාජිකයන් 12 දෙනා අනිවාර්යයි
                     value={member}
                     onChange={(e) => handleMemberChange(index, e.target.value)}
                     placeholder={index === 0 ? "e.g. L.A.Kavindu Navodyana Liyana arachchi" : `Enter member ${index + 1} name`}
